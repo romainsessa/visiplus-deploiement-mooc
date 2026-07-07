@@ -1,0 +1,99 @@
+name: CD
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Run Semantic Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run release
+      - name: Extract Version
+        id: version
+        run: |
+          VERSION=$(git describe --tags --abbrev=0 | sed 's/^v//')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+  deploy-backend:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login Heroku Registry
+        run: |
+          echo ${{ secrets.HEROKU_API_KEY }} | docker login \
+            --username=_ \
+            --password-stdin \
+            registry.heroku.com
+      - name: Build Backend Image
+        run: |
+          docker build \
+            -t registry.heroku.com/${{ vars.HEROKU_BACK_APP }}/web \
+            ./book-back
+      - name: Push Backend Image
+        run: |
+          docker push \
+            registry.heroku.com/${{ vars.HEROKU_BACK_APP }}/web
+      - name: Install Heroku CLI
+        run: npm install -g heroku
+      - name: Verify Heroku App
+        run: |
+          heroku apps:info --app ${{ vars.HEROKU_BACK_APP }}
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+      - name: Release Backend
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        run: |
+          heroku container:release web \
+            --app ${{ vars.HEROKU_BACK_APP }}
+  deploy-frontend:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login Heroku Registry
+        run: |
+          echo ${{ secrets.HEROKU_API_KEY }} | docker login \
+            --username=_ \
+            --password-stdin \
+            registry.heroku.com
+      - name: Build Frontend Image
+        run: |
+          docker build \
+            -t registry.heroku.com/${{ vars.HEROKU_FRONT_APP }}/web \
+            ./book-front
+      - name: Push Frontend Image
+        run: |
+          docker push \
+            registry.heroku.com/${{ vars.HEROKU_FRONT_APP }}/web
+      - name: Install Heroku CLI
+        run: npm install -g heroku
+      - name: Verify Heroku App
+        run: |
+          heroku apps:info --app ${{ vars.HEROKU_FRONT_APP }}
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+      - name: Release Frontend
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        run: |
+          heroku container:release web \
+            --app ${{ vars.HEROKU_FRONT_APP }} 
