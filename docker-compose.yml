@@ -1,0 +1,35 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: book-mysql
+    environment:
+      MYSQL_DATABASE: bookdb
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: book
+      MYSQL_PASSWORD: book
+    ports:
+      - "3306:3306"
+  backend:
+    build:
+      context: ./book-back
+    container_name: book-back
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/bookdb
+      SPRING_DATASOURCE_USERNAME: book
+      SPRING_DATASOURCE_PASSWORD: book
+      BOOK_FRONT_URL: http://localhost:4200
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+  frontend:
+    build:
+      context: ./book-front
+    container_name: book-front
+    environment:
+      PORT: 8080
+      BOOK_BACK_URL: http://localhost:8080
+    ports:
+      - "4200:8080"
+    depends_on:
+      - backend
