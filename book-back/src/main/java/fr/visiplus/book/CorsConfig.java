@@ -9,7 +9,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class CorsConfig {
 
-	@Value("${BOOK_FRONT_URL:}")
+	@Value("${BOOK_FRONT_URL:}") // comment
 	private String frontendUrl;
 
 	@Bean
