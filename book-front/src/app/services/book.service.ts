@@ -14,7 +14,7 @@ declare global {
 })
 export class BookService {
 
-  private apiUrl = `${window?.env?.BOOK_BACK_URL || 'http://localhost:8080'}/book`;
+  private apiUrl = `${window.env.BOOK_BACK_URL}/book`;
 
   constructor(private http: HttpClient) {}
 
