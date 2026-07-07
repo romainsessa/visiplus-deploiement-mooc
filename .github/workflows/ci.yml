@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '25'
+        distribution: 'temurin'
+        cache: maven
+    - name: Run tests
+      run: mvn clean test --file book-back/pom.xml
+  frontend-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+        cache: npm
+        cache-dependency-path: book-front/package-lock.json
+    - name: Install
+      run: npm install
+      working-directory: book-front
+    - name: Run tests
+      run: npm run test
+      working-directory: book-front
+  backend-build:
+    runs-on: ubuntu-latest
+    needs: backend-tests
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '25'
+        distribution: 'temurin'
+        cache: maven
+    - name: Build Backend
+      run: mvn clean package --file book-back/pom.xml -DskipTests=true
+  frontend-build:
+    runs-on: ubuntu-latest
+    needs: frontend-tests
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+        cache: npm
+        cache-dependency-path: book-front/package-lock.json
+    - name: Build Frontend
+      run: |
+        npm ci
+        npm run build -- --configuration production
+      working-directory: book-front
